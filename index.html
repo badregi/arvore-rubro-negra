@@ -1,0 +1,875 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Árvore Rubro-Negra</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:#fff;color:#111;font:14px/1.45 Arial,Helvetica,sans-serif}
+header{padding:18px 28px 12px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap}
+h1{font-family:Georgia,'Times New Roman',serif;font-weight:normal;font-size:25px;margin:0}
+.sub{color:#555;margin:4px 0 0;font-size:13px}
+fieldset.mode{border:1px solid #bbb;padding:6px 12px 9px;margin:0}
+fieldset.mode legend{font-size:12px;color:#555;padding:0 5px}
+fieldset.mode label{display:block;font-size:13px;padding:2px 0;cursor:pointer}
+fieldset.mode input{margin-right:6px;vertical-align:-1px}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:11px 28px;border-bottom:1px solid #ccc}
+#val{border:1px solid #767676;padding:6px 8px;width:180px;font:13px 'Courier New',monospace;background:#fff}
+#val:focus{outline:1px solid #333}
+button{border:1px solid #767676;background:#f3f3f3;color:#111;padding:6px 13px;font:13px Arial,sans-serif;cursor:pointer}
+button:hover{background:#e7e7e7}
+button:disabled{color:#999;border-color:#bbb;background:#f7f7f7;cursor:default}
+button:focus-visible,#val:focus-visible{outline:2px solid #333;outline-offset:1px}
+.sep{width:1px;height:22px;background:#ccc;margin:0 4px}
+label.chk,label.spd{font-size:13px;color:#333;display:flex;align-items:center;gap:6px;cursor:pointer}
+select{border:1px solid #767676;background:#fff;font:13px Arial,sans-serif;padding:5px 4px}
+main{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:20px;padding:14px 28px 26px;align-items:start}
+.statusbar{min-height:30px;display:flex;align-items:center;gap:12px;padding:4px 2px 8px}
+#status{font-style:italic;color:#333;font-size:13.5px}
+#btnSkip{display:none;padding:3px 10px;font-size:12px}
+.canvas-wrap{border:1px solid #999;position:relative;min-height:440px;overflow:auto;background:#fff}
+.canvas-wrap svg{display:block;width:100%;height:auto;min-height:430px}
+.empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#888;font-size:14px;pointer-events:none}
+.hint{color:#777;font-size:12px;margin:8px 2px 0;text-align:right}
+aside section{border:1px solid #ccc;padding:11px 14px 12px;margin-bottom:14px}
+aside h3{margin:0 0 8px;font-size:12px;font-weight:bold;letter-spacing:.06em;text-transform:uppercase;color:#444;border-bottom:1px solid #ddd;padding-bottom:5px}
+.stats{display:flex;justify-content:space-around;text-align:center}
+.stats b{font-size:21px;display:block;font-weight:bold}
+.stats span{font-size:11px;color:#666}
+.props ul{list-style:none;padding:0;margin:0;font-size:13px;line-height:1.55}
+.props li .mark{display:inline-block;width:16px;font-weight:bold}
+.props li.ok .mark{color:#1d7a36}
+.props li.bad .mark{color:#c00000}
+.props li.bad{color:#c00000}
+.log ol{list-style:none;margin:0;padding:0;max-height:240px;overflow:auto;font-size:12.5px;line-height:1.5}
+.log li{padding:3px 0;border-bottom:1px dotted #ddd;color:#333}
+.log li:last-child{border:none}
+.log .m{color:#777;font-size:11px}
+.log .k{font-family:'Courier New',monospace;font-weight:bold}
+.node{cursor:pointer}
+@media(max-width:900px){main{grid-template-columns:1fr}header,.toolbar,main{padding-left:14px;padding-right:14px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Árvore Rubro-Negra</h1>
+    <p class="sub">Inserção e remoção com visualização passo a passo das recolorações e rotações.</p>
+  </div>
+  <fieldset class="mode">
+    <legend>Estratégia de balanceamento</legend>
+    <label><input type="radio" name="mode" value="bu" checked> Bottom-up (CLRS) — corrige subindo, após a operação</label>
+    <label><input type="radio" name="mode" value="td"> Top-down (passada única) — corrige durante a descida</label>
+  </fieldset>
+</header>
+
+<div class="toolbar">
+  <input id="val" placeholder="ex.: 42 ou 10, 20, 5" inputmode="numeric" aria-label="Valores">
+  <button id="btnIns">Inserir</button>
+  <button id="btnDel">Remover</button>
+  <button id="btnFind">Buscar</button>
+  <span class="sep"></span>
+  <button id="btnRand">Aleatório</button>
+  <button id="btnClear">Limpar</button>
+  <span class="sep"></span>
+  <label class="chk"><input type="checkbox" id="chkNil"> folhas NIL</label>
+  <span class="sep"></span>
+  <label class="spd">Animação:
+    <select id="spd">
+      <option value="1500">lenta</option>
+      <option value="950" selected>normal</option>
+      <option value="500">rápida</option>
+      <option value="0">sem passos</option>
+    </select>
+  </label>
+</div>
+
+<main>
+  <section>
+    <div class="statusbar">
+      <span id="status"></span>
+      <button id="btnSkip">Pular passos</button>
+    </div>
+    <div class="canvas-wrap">
+      <svg id="svg" viewBox="0 0 800 440" preserveAspectRatio="xMidYMin meet" aria-label="Desenho da árvore rubro-negra"></svg>
+      <div id="empty" class="empty">Árvore vazia — insira um valor para começar.</div>
+    </div>
+    <p class="hint">Clique em um nó para removê-lo com a estratégia atual.</p>
+  </section>
+  <aside>
+    <section class="stats-sec">
+      <h3>Medidas</h3>
+      <div class="stats">
+        <div><b id="stN">0</b><span>nós</span></div>
+        <div><b id="stH">–</b><span>altura</span></div>
+        <div><b id="stBH">–</b><span>altura negra</span></div>
+      </div>
+    </section>
+    <section class="props">
+      <h3>Propriedades</h3>
+      <ul id="props"></ul>
+    </section>
+    <section class="log">
+      <h3>Histórico</h3>
+      <ol id="log"></ol>
+    </section>
+  </aside>
+</main>
+
+<script>
+/*ALGO-START*/
+'use strict';
+let __uid = 1;
+const mk = (key) => ({ id: 'n' + (__uid++), key, red: true, left: null, right: null });
+const isRed = (n) => !!n && n.red;
+const getLink = (n, d) => (d === 1 ? n.right : n.left);
+const setLink = (n, d, v) => { if (d === 1) n.right = v; else n.left = v; };
+const NOREC = () => {};
+function cloneTree(n) {
+  return n ? { id: n.id, key: n.key, red: n.red, left: cloneTree(n.left), right: cloneTree(n.right) } : null;
+}
+
+/* ---------- rotações estilo jsw (top-down): dir=1 -> à direita, dir=0 -> à esquerda ---------- */
+function tdSingle(root, dir) {
+  const save = getLink(root, 1 - dir);
+  setLink(root, 1 - dir, getLink(save, dir));
+  setLink(save, dir, root);
+  root.red = true; save.red = false;
+  return save;
+}
+function tdDouble(root, dir) {
+  setLink(root, 1 - dir, tdSingle(getLink(root, 1 - dir), 1 - dir));
+  return tdSingle(root, dir);
+}
+const dirName = (d) => (d === 1 ? 'à direita' : 'à esquerda');
+
+/* ---------- inserção top-down (Guibas–Sedgewick / Julienne Walker) ---------- */
+function tdInsert(root, key, rec) {
+  const R = rec || NOREC;
+  if (!root) {
+    const n = mk(key); n.red = false;
+    R(`${key} inserido como raiz (negra)`, [n.id], n);
+    return n;
+  }
+  const head = { key: null, red: false, left: null, right: null };
+  let g = null, t = head, p = null, q;
+  let dir = 0, last = 0;
+  setLink(head, 1, root);
+  q = root;
+  const cur = () => getLink(head, 1);
+  for (;;) {
+    if (!q) {
+      q = mk(key);
+      setLink(p, dir, q);
+      R(`${key} inserido como nó vermelho`, [q.id], cur());
+    } else if (isRed(q.left) && isRed(q.right)) {
+      q.red = true; q.left.red = false; q.right.red = false;       // split de 4-nó
+      R(`split de 4-nó em ${q.key}: ${q.key} fica vermelho, filhos ${q.left.key} e ${q.right.key} ficam negros`,
+        [q.id, q.left.id, q.right.id], cur());
+    }
+    if (isRed(q) && isRed(p)) {                                     // violação vermelho-vermelho
+      const dir2 = getLink(t, 1) === g ? 1 : 0;
+      const dr = 1 - last;
+      if (q === getLink(p, last)) {
+        setLink(t, dir2, tdSingle(g, dr));
+        R(`vermelho-vermelho (${p.key}, ${q.key}): rotação simples ${dirName(dr)} em ${g.key}`,
+          [g.id, p.id, q.id], cur());
+      } else {
+        setLink(t, dir2, tdDouble(g, dr));
+        R(`vermelho-vermelho (${p.key}, ${q.key}): rotação dupla em ${g.key}`,
+          [g.id, p.id, q.id], cur());
+      }
+    }
+    if (q.key === key) break;
+    last = dir;
+    dir = q.key < key ? 1 : 0;
+    R(`compara ${key} com ${q.key}: ${key} ${dir === 1 ? '>' : '<'} ${q.key} → desce à ${dir === 1 ? 'direita' : 'esquerda'}`,
+      [q.id], cur());
+    if (g) t = g;
+    g = p; p = q; q = getLink(q, dir);
+  }
+  const newRoot = cur();
+  if (newRoot.red) {
+    newRoot.red = false;
+    R(`raiz ${newRoot.key} recolorida para negro`, [newRoot.id], newRoot);
+  }
+  return newRoot;
+}
+
+/* ---------- remoção top-down (empurra um vermelho na descida) ---------- */
+function tdDelete(root, key, rec) {
+  const R = rec || NOREC;
+  if (!root) return root;
+  const head = { key: null, red: false, left: null, right: null };
+  let q = head, p = null, g = null, f = null;
+  let dir = 1;
+  setLink(head, 1, root);
+  const cur = () => getLink(head, 1);
+  while (getLink(q, dir)) {
+    const last = dir;
+    g = p; p = q;
+    q = getLink(q, dir);
+    dir = q.key < key ? 1 : 0;
+    if (q.key === key) {
+      f = q;
+      R(`encontrou ${key}${q.left ? '; desce à esquerda para localizar o predecessor' : ''}`, [q.id], cur());
+    } else if (f) {
+      R(`a caminho do predecessor de ${key}: desce à ${dir === 1 ? 'direita' : 'esquerda'} em ${q.key}`, [q.id], cur());
+    } else {
+      R(`compara ${key} com ${q.key}: ${key} ${dir === 1 ? '>' : '<'} ${q.key} → desce à ${dir === 1 ? 'direita' : 'esquerda'}`,
+        [q.id], cur());
+    }
+    if (!isRed(q) && !isRed(getLink(q, dir))) {
+      if (isRed(getLink(q, 1 - dir))) {
+        const r = tdSingle(q, dir);
+        setLink(p, last, r);
+        p = r;
+        R(`rotação ${dirName(dir)} em ${q.key} traz um nó vermelho ao caminho da descida`,
+          [q.id, r.id], cur());
+      } else {
+        const s = getLink(p, 1 - last);
+        if (s) {
+          if (!isRed(getLink(s, 1 - last)) && !isRed(getLink(s, last))) {
+            p.red = false; s.red = true; q.red = true;
+            R(`inversão de cores: ${p.key} fica negro; irmão ${s.key} e ${q.key} ficam vermelhos`,
+              [p.id, s.id, q.id], cur());
+          } else {
+            const dir2 = getLink(g, 1) === p ? 1 : 0;
+            if (isRed(getLink(s, last))) {
+              setLink(g, dir2, tdDouble(p, last));
+              R(`irmão ${s.key} empresta um vermelho: rotação dupla em ${p.key}`, [p.id, s.id, q.id], cur());
+            } else if (isRed(getLink(s, 1 - last))) {
+              setLink(g, dir2, tdSingle(p, last));
+              R(`irmão ${s.key} empresta um vermelho: rotação simples ${dirName(last)} em ${p.key}`,
+                [p.id, s.id, q.id], cur());
+            }
+            const h = getLink(g, dir2);
+            q.red = true; h.red = true;
+            h.left.red = false; h.right.red = false;
+            R(`recoloração: ${q.key} e ${h.key} ficam vermelhos; filhos de ${h.key} ficam negros`,
+              [q.id, h.id, h.left.id, h.right.id], cur());
+          }
+        }
+      }
+    }
+  }
+  if (f) {
+    const leafKey = q.key, targetKey = f.key;
+    f.key = q.key;
+    setLink(p, p.right === q ? 1 : 0, q.left === null ? q.right : q.left);
+    R(targetKey === leafKey
+        ? `nó ${leafKey} removido da árvore`
+        : `${targetKey} recebe a chave do predecessor ${leafKey}; o nó de baixo é removido`,
+      [f.id], cur());
+  }
+  const nr = cur();
+  if (nr && nr.red) {
+    nr.red = false;
+    R(`raiz ${nr.key} recolorida para negro`, [nr.id], nr);
+  }
+  return nr;
+}
+
+/* ---------- bottom-up (CLRS) com ponteiros de pai ---------- */
+function setParents(n, par) {
+  if (!n) return;
+  n.parent = par || null;
+  setParents(n.left, n);
+  setParents(n.right, n);
+}
+function rotateLeft(state, x) {
+  const y = x.right;
+  x.right = y.left;
+  if (y.left) y.left.parent = x;
+  y.parent = x.parent;
+  if (!x.parent) state.root = y;
+  else if (x === x.parent.left) x.parent.left = y;
+  else x.parent.right = y;
+  y.left = x; x.parent = y;
+}
+function rotateRight(state, x) {
+  const y = x.left;
+  x.left = y.right;
+  if (y.right) y.right.parent = x;
+  y.parent = x.parent;
+  if (!x.parent) state.root = y;
+  else if (x === x.parent.right) x.parent.right = y;
+  else x.parent.left = y;
+  y.right = x; x.parent = y;
+}
+function buInsert(state, key, rec) {
+  const R = rec || NOREC;
+  setParents(state.root, null);
+  const z = mk(key);
+  let y = null, x = state.root;
+  while (x) {
+    y = x;
+    const right = !(key < x.key);
+    R(`compara ${key} com ${x.key}: ${key} ${right ? '>' : '<'} ${x.key} → desce à ${right ? 'direita' : 'esquerda'}`,
+      [x.id], state.root);
+    x = key < x.key ? x.left : x.right;
+  }
+  z.parent = y;
+  if (!y) state.root = z;
+  else if (key < y.key) y.left = z;
+  else y.right = z;
+  R(y ? `${key} inserido como folha vermelha (filho de ${y.key})` : `${key} inserido como raiz`, [z.id], state.root);
+  buInsertFixup(state, z, R);
+}
+function buInsertFixup(state, z, R) {
+  while (isRed(z.parent)) {
+    const p = z.parent, g = p.parent;
+    if (p === g.left) {
+      const u = g.right;
+      if (isRed(u)) {
+        p.red = false; u.red = false; g.red = true;
+        R(`caso 1 (tio ${u.key} vermelho): pai ${p.key} e tio ${u.key} ficam negros, avô ${g.key} fica vermelho`,
+          [p.id, u.id, g.id], state.root);
+        z = g;
+      } else {
+        if (z === p.right) {
+          z = p;
+          rotateLeft(state, z);
+          R(`caso 2: rotação à esquerda em ${z.key}`, [z.id, z.parent.id], state.root);
+        }
+        z.parent.red = false;
+        z.parent.parent.red = true;
+        R(`caso 3: ${z.parent.key} fica negro e ${z.parent.parent.key} fica vermelho`,
+          [z.parent.id, z.parent.parent.id], state.root);
+        rotateRight(state, z.parent.parent);
+        R(`caso 3: rotação à direita em torno do antigo avô`, [z.parent.id, z.id], state.root);
+      }
+    } else {
+      const u = g.left;
+      if (isRed(u)) {
+        p.red = false; u.red = false; g.red = true;
+        R(`caso 1 (tio ${u.key} vermelho): pai ${p.key} e tio ${u.key} ficam negros, avô ${g.key} fica vermelho`,
+          [p.id, u.id, g.id], state.root);
+        z = g;
+      } else {
+        if (z === p.left) {
+          z = p;
+          rotateRight(state, z);
+          R(`caso 2: rotação à direita em ${z.key}`, [z.id, z.parent.id], state.root);
+        }
+        z.parent.red = false;
+        z.parent.parent.red = true;
+        R(`caso 3: ${z.parent.key} fica negro e ${z.parent.parent.key} fica vermelho`,
+          [z.parent.id, z.parent.parent.id], state.root);
+        rotateLeft(state, z.parent.parent);
+        R(`caso 3: rotação à esquerda em torno do antigo avô`, [z.parent.id, z.id], state.root);
+      }
+    }
+  }
+  if (state.root.red) {
+    state.root.red = false;
+    R(`raiz ${state.root.key} recolorida para negro`, [state.root.id], state.root);
+  }
+}
+function buTransplant(state, u, v) {
+  if (!u.parent) state.root = v;
+  else if (u === u.parent.left) u.parent.left = v;
+  else u.parent.right = v;
+  if (v) v.parent = u.parent;
+}
+function buDelete(state, key, rec) {
+  const R = rec || NOREC;
+  setParents(state.root, null);
+  let z = state.root;
+  while (z && z.key !== key) {
+    R(`compara ${key} com ${z.key}: ${key} ${key < z.key ? '<' : '>'} ${z.key} → desce à ${key < z.key ? 'esquerda' : 'direita'}`,
+      [z.id], state.root);
+    z = key < z.key ? z.left : z.right;
+  }
+  if (!z) return false;
+  R(`encontrou ${key}`, [z.id], state.root);
+  let y = z, yWasRed = y.red, x, xp;
+  if (!z.left) {
+    x = z.right; xp = z.parent;
+    buTransplant(state, z, z.right);
+    R(`remove ${z.key}${z.right ? `; ${z.right.key} ocupa o lugar` : ''}`, x ? [x.id] : [], state.root);
+  } else if (!z.right) {
+    x = z.left; xp = z.parent;
+    buTransplant(state, z, z.left);
+    R(`remove ${z.key}; ${z.left.key} ocupa o lugar`, [x.id], state.root);
+  } else {
+    y = z.right;
+    while (y.left) y = y.left;                                     // sucessor
+    R(`sucessor de ${key} é ${y.key} (mínimo da subárvore direita)`, [y.id], state.root);
+    yWasRed = y.red;
+    x = y.right;
+    if (y.parent === z) { xp = y; if (x) x.parent = y; }
+    else {
+      xp = y.parent;
+      buTransplant(state, y, y.right);
+      y.right = z.right; y.right.parent = y;
+    }
+    buTransplant(state, z, y);
+    y.left = z.left; y.left.parent = y;
+    y.red = z.red;
+    R(`substitui ${key} pelo sucessor ${y.key}, que herda a cor da posição`, [y.id], state.root);
+  }
+  if (!yWasRed) {
+    R(`o nó retirado era negro → é preciso corrigir o duplo-negro`, x ? [x.id] : (xp ? [xp.id] : []), state.root);
+    buDeleteFixup(state, x, xp, R);
+  }
+  if (state.root && state.root.red) {
+    state.root.red = false;
+    R(`raiz recolorida para negro`, [state.root.id], state.root);
+  }
+  return true;
+}
+function buDeleteFixup(state, x, p, R) {
+  while (x !== state.root && !isRed(x) && p) {
+    if (x === p.left) {
+      let w = p.right;
+      if (isRed(w)) {
+        w.red = false; p.red = true;
+        R(`caso 1 (irmão ${w.key} vermelho): ${w.key} fica negro e ${p.key} fica vermelho`, [w.id, p.id], state.root);
+        rotateLeft(state, p);
+        R(`caso 1: rotação à esquerda em ${p.key}`, [p.id, w.id], state.root);
+        w = p.right;
+      }
+      if (!isRed(w && w.left) && !isRed(w && w.right)) {
+        if (w) {
+          w.red = true;
+          R(`caso 2 (sobrinhos negros): irmão ${w.key} fica vermelho; o problema sobe para ${p.key}`, [w.id, p.id], state.root);
+        }
+        x = p; p = x.parent;
+      } else {
+        if (!isRed(w.right)) {
+          const hl = [w.id]; if (w.left) hl.push(w.left.id);
+          if (w.left) w.left.red = false;
+          w.red = true;
+          R(`caso 3: ${w.key} fica vermelho e seu filho esquerdo fica negro`, hl, state.root);
+          rotateRight(state, w);
+          w = p.right;
+          R(`caso 3: rotação à direita no irmão; novo irmão é ${w.key}`, [w.id], state.root);
+        }
+        const hl4 = [w.id, p.id]; if (w.right) hl4.push(w.right.id);
+        w.red = p.red; p.red = false;
+        if (w.right) w.right.red = false;
+        R(`caso 4: ${w.key} herda a cor de ${p.key}; ${p.key} e o sobrinho ficam negros`, hl4, state.root);
+        rotateLeft(state, p);
+        R(`caso 4: rotação à esquerda em ${p.key} — duplo-negro resolvido`, [p.id, w.id], state.root);
+        x = state.root; p = null;
+      }
+    } else {
+      let w = p.left;
+      if (isRed(w)) {
+        w.red = false; p.red = true;
+        R(`caso 1 (irmão ${w.key} vermelho): ${w.key} fica negro e ${p.key} fica vermelho`, [w.id, p.id], state.root);
+        rotateRight(state, p);
+        R(`caso 1: rotação à direita em ${p.key}`, [p.id, w.id], state.root);
+        w = p.left;
+      }
+      if (!isRed(w && w.right) && !isRed(w && w.left)) {
+        if (w) {
+          w.red = true;
+          R(`caso 2 (sobrinhos negros): irmão ${w.key} fica vermelho; o problema sobe para ${p.key}`, [w.id, p.id], state.root);
+        }
+        x = p; p = x.parent;
+      } else {
+        if (!isRed(w.left)) {
+          const hl = [w.id]; if (w.right) hl.push(w.right.id);
+          if (w.right) w.right.red = false;
+          w.red = true;
+          R(`caso 3: ${w.key} fica vermelho e seu filho direito fica negro`, hl, state.root);
+          rotateLeft(state, w);
+          w = p.left;
+          R(`caso 3: rotação à esquerda no irmão; novo irmão é ${w.key}`, [w.id], state.root);
+        }
+        const hl4 = [w.id, p.id]; if (w.left) hl4.push(w.left.id);
+        w.red = p.red; p.red = false;
+        if (w.left) w.left.red = false;
+        R(`caso 4: ${w.key} herda a cor de ${p.key}; ${p.key} e o sobrinho ficam negros`, hl4, state.root);
+        rotateRight(state, p);
+        R(`caso 4: rotação à direita em ${p.key} — duplo-negro resolvido`, [p.id, w.id], state.root);
+        x = state.root; p = null;
+      }
+    }
+  }
+  if (x && x.red) {
+    x.red = false;
+    R(`${x.key} recolorido para negro`, [x.id], state.root);
+  } else if (x) x.red = false;
+}
+
+/* ---------- utilidades ---------- */
+function contains(root, key) {
+  let n = root;
+  while (n) { if (n.key === key) return true; n = key < n.key ? n.left : n.right; }
+  return false;
+}
+function findPath(root, key) {
+  const path = []; let n = root;
+  while (n) { path.push(n.id); if (n.key === key) return { found: true, path }; n = key < n.key ? n.left : n.right; }
+  return { found: false, path };
+}
+function treeHeight(n) { return n ? 1 + Math.max(treeHeight(n.left), treeHeight(n.right)) : 0; }
+function countNodes(n) { return n ? 1 + countNodes(n.left) + countNodes(n.right) : 0; }
+function inorderKeys(n, out) { if (!n) return out; inorderKeys(n.left, out); out.push(n.key); inorderKeys(n.right, out); return out; }
+function validate(root) {
+  const ok = { rootBlack: !root || !root.red, redred: true, blackh: true, bst: true };
+  (function go(n, lo, hi) {
+    if (!n) return 1;
+    if ((lo !== null && n.key <= lo) || (hi !== null && n.key >= hi)) ok.bst = false;
+    if (n.red && (isRed(n.left) || isRed(n.right))) ok.redred = false;
+    const l = go(n.left, lo, n.key);
+    const r = go(n.right, n.key, hi);
+    if (l !== r) ok.blackh = false;
+    return Math.max(l, r) + (n.red ? 0 : 1);
+  })(root, null, null);
+  ok.bh = root ? (function blacks(n) { let c = 0; while (n) { if (!n.red) c++; n = n.left; } return c; })(root) : 0;
+  return ok;
+}
+/*ALGO-END*/
+
+/* ================= interface ================= */
+const state = { root: null };
+let mode = 'bu';
+let showNil = false;
+let positions = new Map();
+let lastItems = new Map();
+let currentLayout = null;
+let stepHL = new Set();                 // destaque do passo atual
+let stepTrail = new Set();              // nós já visitados na descida/busca
+let foundHL = { ids: new Set(), target: null };
+let foundTimer = null;
+let playing = false, skipReq = false;
+let animFrame = null;
+
+const svg = document.getElementById('svg');
+const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const NR = 20;
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const stepMs = () => Number(document.getElementById('spd').value);
+
+function layout(root) {
+  const SPX = showNil ? 48 : 56, SPY = 84, PADX = 40, PADT = 46;
+  let idx = 0, maxD = 0;
+  const nodes = [], nils = [], edges = [];
+  function placeNil(d, id) {
+    maxD = Math.max(maxD, d);
+    const o = { id, nil: true, x: PADX + idx * SPX, y: PADT + d * SPY };
+    idx++; nils.push(o); return o;
+  }
+  function walk(n, d) {
+    maxD = Math.max(maxD, d);
+    let L = null, Rt = null;
+    if (n.left) L = walk(n.left, d + 1);
+    else if (showNil) L = placeNil(d + 1, 'nil-' + n.id + '-L');
+    const pos = { id: n.id, key: n.key, red: n.red, x: PADX + idx * SPX, y: PADT + d * SPY };
+    idx++; nodes.push(pos);
+    if (n.right) Rt = walk(n.right, d + 1);
+    else if (showNil) Rt = placeNil(d + 1, 'nil-' + n.id + '-R');
+    if (L) edges.push({ pid: pos.id, cid: L.id });
+    if (Rt) edges.push({ pid: pos.id, cid: Rt.id });
+    return pos;
+  }
+  if (root) walk(root, 0);
+  const W = Math.max(740, PADX * 2 + Math.max(idx - 1, 0) * SPX);
+  const H = Math.max(430, PADT + maxD * SPY + 72);
+  return { nodes, nils, edges, W, H };
+}
+
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = (t) => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const escTxt = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+function renderItem(nd, x, y, op, ringKind, strong) {
+  const fill = nd.red ? '#cc2222' : '#1a1a1a';
+  const stroke = nd.red ? '#7a1414' : '#1a1a1a';
+  const len = String(nd.key).length;
+  const fs = len <= 2 ? 13 : len === 3 ? 11.5 : 10;
+  let ring = '';
+  if (ringKind) {
+    ring = `<circle cx="${x}" cy="${y}" r="${NR + 5}" fill="none" stroke="#e6a700" stroke-width="${strong ? 3.4 : 2.4}" opacity="${strong ? 1 : 0.75}"/>`;
+  }
+  return `<g class="node" data-key="${nd.key}" opacity="${op}">${ring}` +
+    `<circle cx="${x}" cy="${y}" r="${NR}" fill="${fill}" stroke="${stroke}" stroke-width="1.3"/>` +
+    `<text x="${x}" y="${y}" dy="0.35em" text-anchor="middle" font-size="${fs}" font-weight="bold" fill="#fff" font-family="Arial,sans-serif">${escTxt(nd.key)}</text>` +
+    `<title>${nd.red ? 'vermelho' : 'negro'} — clique para remover</title></g>`;
+}
+
+function drawFrame(lay, oldPos, t) {
+  const fp = new Map();
+  for (const it of [...lay.nodes, ...lay.nils]) {
+    const from = oldPos.get(it.id);
+    fp.set(it.id, {
+      x: from ? lerp(from.x, it.x, t) : it.x,
+      y: from ? lerp(from.y, it.y, t) : it.y,
+      op: from ? 1 : t
+    });
+  }
+  let out = '';
+  for (const e of lay.edges) {
+    const a = fp.get(e.pid), b = fp.get(e.cid);
+    if (!a || !b) continue;
+    out += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#555" stroke-width="1.3" opacity="${Math.min(a.op, b.op)}"/>`;
+  }
+  for (const [id, old] of oldPos) {                 // nós que saíram: fade-out
+    if (fp.has(id)) continue;
+    const item = lastItems.get(id);
+    if (!item || item.nil) continue;
+    const op = 1 - t;
+    if (op > 0.03) out += renderItem(item, old.x, old.y, op, null, false);
+  }
+  for (const nl of lay.nils) {
+    const p = fp.get(nl.id);
+    out += `<g opacity="${p.op}"><rect x="${p.x - 15}" y="${p.y - 9}" width="30" height="18" fill="#1a1a1a"/>` +
+      `<text x="${p.x}" y="${p.y}" dy="0.34em" text-anchor="middle" font-size="8.5" fill="#fff" font-family="Arial,sans-serif">NIL</text></g>`;
+  }
+  for (const nd of lay.nodes) {
+    const p = fp.get(nd.id);
+    let ring = null, strong = false;
+    if (stepHL.has(nd.id)) { ring = 'step'; strong = true; }
+    else if (stepTrail.has(nd.id)) { ring = 'step'; strong = false; }
+    else if (foundHL.ids.has(nd.id)) { ring = 'found'; strong = foundHL.target === nd.id; }
+    out += renderItem(nd, p.x, p.y, p.op, ring, strong);
+  }
+  svg.setAttribute('viewBox', `0 0 ${lay.W} ${lay.H}`);
+  svg.style.minHeight = Math.min(lay.H, 680) + 'px';
+  svg.innerHTML = out;
+}
+
+function animateTo(root, dur) {
+  return new Promise((resolve) => {
+    const lay = layout(root);
+    currentLayout = lay;
+    document.getElementById('empty').style.display = lay.nodes.length ? 'none' : 'flex';
+    const oldPos = positions;
+    const D = prefersReduced ? 0 : dur;
+    cancelAnimationFrame(animFrame);
+    const finish = () => {
+      positions = new Map([...lay.nodes, ...lay.nils].map(it => [it.id, { x: it.x, y: it.y }]));
+      lastItems = new Map([...lay.nodes, ...lay.nils].map(it => [it.id, it]));
+      drawFrame(lay, positions, 1);
+      resolve();
+    };
+    if (D === 0) { finish(); return; }
+    const start = performance.now();
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / D);
+      drawFrame(lay, oldPos, ease(t));
+      if (t < 1) animFrame = requestAnimationFrame(step);
+      else finish();
+    };
+    animFrame = requestAnimationFrame(step);
+  });
+}
+
+function redraw() { if (currentLayout) drawFrame(currentLayout, positions, 1); }
+
+function updatePanels(root) {
+  const n = countNodes(root);
+  const h = treeHeight(root);
+  const v = validate(root);
+  document.getElementById('stN').textContent = n;
+  document.getElementById('stH').textContent = n ? h - 1 : '–';
+  document.getElementById('stBH').textContent = n ? v.bh : '–';
+  const items = [
+    [v.bst, 'Ordem de busca binária'],
+    [v.rootBlack, 'Raiz negra'],
+    [v.redred, 'Sem pai e filho vermelhos'],
+    [v.blackh, 'Alturas negras iguais'],
+  ];
+  document.getElementById('props').innerHTML = items.map(([ok, txt]) =>
+    `<li class="${ok ? 'ok' : 'bad'}"><span class="mark">${ok ? '✓' : '✗'}</span>${txt}</li>`).join('');
+}
+
+function setStatus(txt) { document.getElementById('status').textContent = txt; }
+function setBusy(b) {
+  ['btnIns', 'btnDel', 'btnFind', 'btnRand', 'btnClear', 'val', 'chkNil'].forEach(id =>
+    document.getElementById(id).disabled = b);
+  document.querySelectorAll('input[name=mode]').forEach(r => r.disabled = b);
+  document.getElementById('btnSkip').style.display = b ? 'inline-block' : 'none';
+}
+
+async function playSteps(steps) {
+  const per = stepMs();
+  if (per === 0 || !steps.length) {
+    stepHL = new Set();
+    await animateTo(state.root, prefersReduced ? 0 : 350);
+    updatePanels(state.root);
+    return;
+  }
+  playing = true; skipReq = false;
+  setBusy(true);
+  for (let i = 0; i < steps.length && !skipReq; i++) {
+    const s = steps[i];
+    setStatus(`Passo ${i + 1} de ${steps.length} — ${s.msg}`);
+    stepHL = new Set(s.hl);
+    stepTrail = new Set(s.trail || []);
+    updatePanels(s.tree);
+    await animateTo(s.tree, Math.min(480, per * 0.55));
+    await sleep(Math.max(150, per * 0.45));
+  }
+  stepHL = new Set();
+  stepTrail = new Set();
+  setStatus('');
+  await animateTo(state.root, 280);
+  updatePanels(state.root);
+  playing = false;
+  setBusy(false);
+  document.getElementById('val').focus();
+}
+
+function recFor(steps) {
+  return (msg, hl, root) => steps.push({ msg, hl: hl || [], tree: cloneTree(root) });
+}
+
+function log(html, tag) {
+  const ol = document.getElementById('log');
+  const li = document.createElement('li');
+  const m = tag === 'td' ? ' <span class="m">(top-down)</span>'
+    : tag === 'bu' ? ' <span class="m">(bottom-up)</span>' : '';
+  li.innerHTML = html + m;
+  ol.prepend(li);
+  while (ol.children.length > 40) ol.removeChild(ol.lastChild);
+}
+
+function clearFound() {
+  clearTimeout(foundTimer);
+  foundHL = { ids: new Set(), target: null };
+}
+
+function parseVals() {
+  const raw = document.getElementById('val').value;
+  return [...new Set(raw.split(/[\s,;]+/).filter(Boolean).map(Number)
+    .filter(v => Number.isInteger(v) && Math.abs(v) < 100000))];
+}
+
+function doInsert(values) {
+  if (playing) return;
+  if (!values.length) { log('Informe um valor inteiro.'); return; }
+  clearFound();
+  const steps = [], rec = recFor(steps);
+  for (const v of values) {
+    if (countNodes(state.root) >= 63) { log('Limite de 63 nós atingido.'); break; }
+    if (contains(state.root, v)) { log(`<span class="k">${v}</span> já está na árvore.`); continue; }
+    const before = steps.length;
+    if (mode === 'td') state.root = tdInsert(state.root, v, rec);
+    else buInsert(state, v, rec);
+    log(`Inserir <span class="k">${v}</span> — ${steps.length - before} passo(s)`, mode);
+  }
+  document.getElementById('val').value = '';
+  playSteps(steps);
+}
+
+function doDelete(values) {
+  if (playing) return;
+  if (!values.length) { log('Informe um valor inteiro.'); return; }
+  clearFound();
+  const steps = [], rec = recFor(steps);
+  for (const v of values) {
+    if (!contains(state.root, v)) { log(`<span class="k">${v}</span> não está na árvore.`); continue; }
+    const before = steps.length;
+    if (mode === 'td') state.root = tdDelete(state.root, v, rec);
+    else buDelete(state, v, rec);
+    log(`Remover <span class="k">${v}</span> — ${steps.length - before} passo(s)`, mode);
+  }
+  document.getElementById('val').value = '';
+  playSteps(steps);
+}
+
+function doFind() {
+  if (playing) return;
+  const values = parseVals();
+  if (!values.length) { log('Informe um valor para buscar.'); return; }
+  const v = values[0];
+  clearFound();
+  const r = findPath(state.root, v);
+  if (!state.root) { log(`Árvore vazia — <span class="k">${v}</span> não está na árvore.`); return; }
+  if (stepMs() === 0) {                              // sem passos: destaque instantâneo do caminho
+    log(r.found
+      ? `Encontrado <span class="k">${v}</span> — caminho com ${r.path.length} nó(s).`
+      : `<span class="k">${v}</span> não encontrado (${r.path.length} comparações).`);
+    foundHL = { ids: new Set(r.path), target: r.found ? r.path[r.path.length - 1] : null };
+    redraw();
+    foundTimer = setTimeout(() => { foundHL = { ids: new Set(), target: null }; redraw(); }, 2600);
+    return;
+  }
+  const snap = cloneTree(state.root);
+  const steps = [], visited = [];
+  let n = state.root, found = false;
+  while (n) {
+    if (n.key === v) {
+      steps.push({ msg: `${v} = ${n.key} → encontrado`, hl: [n.id], trail: [...visited], tree: snap });
+      found = true;
+      break;
+    }
+    const right = v > n.key;
+    steps.push({
+      msg: `compara ${v} com ${n.key}: ${v} ${right ? '>' : '<'} ${n.key} → segue à ${right ? 'direita' : 'esquerda'}`,
+      hl: [n.id], trail: [...visited], tree: snap
+    });
+    visited.push(n.id);
+    n = right ? n.right : n.left;
+  }
+  if (!found) steps.push({ msg: `alcançou uma folha NIL → ${v} não está na árvore`, hl: [], trail: [...visited], tree: snap });
+  log(found
+    ? `Buscar <span class="k">${v}</span>: encontrado em ${steps.length} passo(s).`
+    : `Buscar <span class="k">${v}</span>: não encontrado (${steps.length} passo(s)).`);
+  playSteps(steps).then(() => {
+    if (found) {
+      foundHL = { ids: new Set(r.path), target: r.path[r.path.length - 1] };
+      redraw();
+      clearTimeout(foundTimer);
+      foundTimer = setTimeout(() => { foundHL = { ids: new Set(), target: null }; redraw(); }, 2600);
+    }
+  });
+}
+
+/* ---------- eventos ---------- */
+document.querySelectorAll('input[name=mode]').forEach(r => {
+  r.addEventListener('change', () => {
+    mode = r.value;
+    log(mode === 'td'
+      ? 'Estratégia alterada para <b>top-down</b> (ajustes na descida).'
+      : 'Estratégia alterada para <b>bottom-up</b> (ajustes após a operação).');
+  });
+});
+document.getElementById('btnIns').addEventListener('click', () => doInsert(parseVals()));
+document.getElementById('btnDel').addEventListener('click', () => doDelete(parseVals()));
+document.getElementById('btnFind').addEventListener('click', doFind);
+document.getElementById('btnRand').addEventListener('click', () => {
+  if (playing) return;
+  let v, tries = 0;
+  do { v = 1 + Math.floor(Math.random() * 99); tries++; } while (contains(state.root, v) && tries < 300);
+  if (contains(state.root, v)) { log('Sem valores livres entre 1 e 99.'); return; }
+  doInsert([v]);
+});
+document.getElementById('btnClear').addEventListener('click', () => {
+  if (playing) return;
+  state.root = null;
+  positions = new Map(); lastItems = new Map();
+  clearFound();
+  log('Árvore esvaziada.');
+  animateTo(null, 0);
+  updatePanels(null);
+});
+document.getElementById('btnSkip').addEventListener('click', () => { skipReq = true; });
+document.getElementById('chkNil').addEventListener('change', (e) => {
+  if (playing) { e.target.checked = showNil; return; }
+  showNil = e.target.checked;
+  animateTo(state.root, prefersReduced ? 0 : 300);
+});
+document.getElementById('val').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') doInsert(parseVals());
+});
+svg.addEventListener('click', (e) => {
+  if (playing) return;
+  const g = e.target.closest('g.node');
+  if (!g) return;
+  doDelete([Number(g.dataset.key)]);
+});
+
+animateTo(null, 0);
+updatePanels(null);
+</script>
+</body>
+</html>
