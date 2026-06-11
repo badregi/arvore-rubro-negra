@@ -14,7 +14,7 @@ Visualizador interativo de árvores rubro-negras com reprodução passo a passo 
 
 ## Como usar
 
-Abra o `index.html` em qualquer navegador moderno, ou acesse a versão publicada com GitHub Pages.
+Acesse a versão publicada em **[https://badregi.github.io/arvore-rubro-negra/](https://badregi.github.io/arvore-rubro-negra/)** .
 
 ## Licença
 
