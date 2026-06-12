@@ -8,14 +8,13 @@
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
 body{background:#fff;color:#111;font:14px/1.45 Arial,Helvetica,sans-serif}
-header{padding:12px 28px 9px;border-bottom:1px solid #333;display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap}
-h1{font-family:Georgia,'Times New Roman',serif;font-weight:normal;font-size:22px;margin:0}
-.sub{color:#555;margin:3px 0 0;font-size:12.5px}
-fieldset.mode{border:1px solid #bbb;padding:6px 12px 9px;margin:0}
-fieldset.mode legend{font-size:12px;color:#555;padding:0 5px}
-fieldset.mode label{display:block;font-size:13px;padding:2px 0;cursor:pointer}
-fieldset.mode input{margin-right:6px;vertical-align:-1px}
-.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 28px;border-bottom:1px solid #ccc}
+header{padding:9px 24px 7px;border-bottom:1px solid #333}
+h1{font-family:Georgia,'Times New Roman',serif;font-weight:normal;font-size:20px;margin:0}
+.sub{color:#555;margin:2px 0 0;font-size:12px}
+.modegrp{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:13px;color:#555}
+.modegrp label{cursor:pointer;display:flex;align-items:center;gap:4px;color:#111}
+.modegrp input{margin:0}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:7px 24px;border-bottom:1px solid #ccc}
 #val{border:1px solid #767676;padding:6px 8px;width:180px;font:13px 'Courier New',monospace;background:#fff}
 #val:focus{outline:1px solid #333}
 button{border:1px solid #767676;background:#f3f3f3;color:#111;padding:6px 13px;font:13px Arial,sans-serif;cursor:pointer}
@@ -25,14 +24,14 @@ button:focus-visible,#val:focus-visible{outline:2px solid #333;outline-offset:1p
 .sep{width:1px;height:22px;background:#ccc;margin:0 4px}
 label.chk,label.spd{font-size:13px;color:#333;display:flex;align-items:center;gap:6px;cursor:pointer}
 select{border:1px solid #767676;background:#fff;font:13px Arial,sans-serif;padding:5px 4px}
-main{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:18px;padding:8px 28px 18px;align-items:start}
+main{display:grid;grid-template-columns:minmax(0,1fr) 248px;gap:14px;padding:6px 24px 12px;align-items:start}
 .statusbar{min-height:26px;display:flex;align-items:center;gap:12px;padding:3px 2px 5px}
 #status{font-style:italic;color:#333;font-size:13px}
-#btnSkip{display:none;padding:3px 10px;font-size:12px}
-.canvas-wrap{border:1px solid #999;position:relative;min-height:330px;overflow:auto;background:#fff}
-.canvas-wrap svg{display:block;width:100%;height:auto;min-height:320px}
+#btnSkip,#btnNext{display:none;padding:3px 10px;font-size:12px}
+.hint{margin-left:auto;color:#999;font-size:11.5px}
+.canvas-wrap{border:1px solid #999;position:relative;min-height:374px;overflow:auto;background:#fff}
+.canvas-wrap svg{display:block;width:100%;height:auto;min-height:370px}
 .empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#888;font-size:14px;pointer-events:none}
-.hint{color:#777;font-size:12px;margin:8px 2px 0;text-align:right}
 aside section{border:1px solid #ccc;padding:9px 13px 10px;margin-bottom:11px}
 aside h3{margin:0 0 7px;font-size:11.5px;font-weight:bold;letter-spacing:.06em;text-transform:uppercase;color:#444;border-bottom:1px solid #ddd;padding-bottom:4px}
 .stats{display:flex;justify-content:space-around;text-align:center}
@@ -43,7 +42,7 @@ aside h3{margin:0 0 7px;font-size:11.5px;font-weight:bold;letter-spacing:.06em;t
 .props li.ok .mark{color:#1d7a36}
 .props li.bad .mark{color:#c00000}
 .props li.bad{color:#c00000}
-.log ol{list-style:none;margin:0;padding:0;max-height:170px;overflow:auto;font-size:12.5px;line-height:1.5}
+.log ol{list-style:none;margin:0;padding:0;max-height:150px;overflow:auto;font-size:12.5px;line-height:1.5}
 .log li{padding:3px 0;border-bottom:1px dotted #ddd;color:#333}
 .log li:last-child{border:none}
 .log .m{color:#777;font-size:11px}
@@ -57,13 +56,8 @@ aside h3{margin:0 0 7px;font-size:11.5px;font-weight:bold;letter-spacing:.06em;t
 <header>
   <div>
     <h1>Árvore Rubro-Negra</h1>
-    <p class="sub">Inserção e remoção com visualização passo a passo das recolorações e rotações.</p>
+    <p class="sub">Inserção, remoção e busca com visualização passo a passo das comparações, recolorações e rotações.</p>
   </div>
-  <fieldset class="mode">
-    <legend>Estratégia de balanceamento</legend>
-    <label><input type="radio" name="mode" value="bu" checked> Bottom-up (CLRS) — corrige subindo, após a operação</label>
-    <label><input type="radio" name="mode" value="td"> Top-down (passada única) — corrige durante a descida</label>
-  </fieldset>
 </header>
 
 <div class="toolbar">
@@ -82,22 +76,28 @@ aside h3{margin:0 0 7px;font-size:11.5px;font-weight:bold;letter-spacing:.06em;t
       <option value="1500">lenta</option>
       <option value="950" selected>normal</option>
       <option value="500">rápida</option>
+      <option value="manual">manual</option>
       <option value="0">sem passos</option>
     </select>
   </label>
+  <span class="modegrp">Estratégia:
+    <label><input type="radio" name="mode" value="bu" checked> Bottom-up</label>
+    <label><input type="radio" name="mode" value="td"> Top-down</label>
+  </span>
 </div>
 
 <main>
   <section>
     <div class="statusbar">
       <span id="status"></span>
+      <button id="btnNext">Próximo passo</button>
       <button id="btnSkip">Pular passos</button>
+      <span class="hint">clique em um nó para removê-lo</span>
     </div>
     <div class="canvas-wrap">
-      <svg id="svg" viewBox="0 0 700 320" preserveAspectRatio="xMidYMin meet" aria-label="Desenho da árvore rubro-negra"></svg>
+      <svg id="svg" viewBox="0 0 700 370" preserveAspectRatio="xMidYMin meet" aria-label="Desenho da árvore rubro-negra"></svg>
       <div id="empty" class="empty">Árvore vazia — insira um valor para começar.</div>
     </div>
-    <p class="hint">Clique em um nó para removê-lo com a estratégia atual.</p>
   </section>
   <aside>
     <section class="stats-sec">
@@ -540,13 +540,17 @@ let stepTrail = new Set();              // nós já visitados na descida/busca
 let foundHL = { ids: new Set(), target: null };
 let foundTimer = null;
 let playing = false, skipReq = false;
+let pendingNode = null;                 // nó aguardando posição (canto superior esquerdo)
+let nextResolve = null;                 // resolve do modo manual
 let animFrame = null;
 
 const svg = document.getElementById('svg');
 const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const NR = 17;
+const PEND_X = 40, PEND_Y = 34;
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-const stepMs = () => Number(document.getElementById('spd').value);
+const speedMode = () => document.getElementById('spd').value;
+function waitNext() { return new Promise(r => { nextResolve = r; }); }
 
 function layout(root) {
   const SPX = showNil ? 42 : 50, SPY = 70, PADX = 36, PADT = 38;
@@ -570,15 +574,20 @@ function layout(root) {
     if (Rt) edges.push({ pid: pos.id, cid: Rt.id });
     return pos;
   }
-  if (root) walk(root, 0);
-  const natW = PADX * 2 + Math.max(idx - 1, 0) * SPX;
-  const W = Math.max(700, natW);
-  const dx = (W - natW) / 2;
-  if (dx > 0) {
-    for (const it of nodes) it.x += dx;
-    for (const it of nils) it.x += dx;
+  let rootPos = null;
+  if (root) rootPos = walk(root, 0);
+  let W = 700;
+  if (rootPos) {
+    const minX = PADX, maxX = PADX + Math.max(idx - 1, 0) * SPX;
+    const half = Math.max(rootPos.x - minX, maxX - rootPos.x) + PADX;
+    W = Math.max(700, 2 * half);
+    const dx = W / 2 - rootPos.x;                  // raiz sempre no centro
+    if (dx !== 0) {
+      for (const it of nodes) it.x += dx;
+      for (const it of nils) it.x += dx;
+    }
   }
-  const H = Math.max(320, PADT + maxD * SPY + 58);
+  const H = Math.max(370, PADT + maxD * SPY + 58);
   return { nodes, nils, edges, W, H };
 }
 
@@ -637,6 +646,10 @@ function drawFrame(lay, oldPos, t) {
     else if (foundHL.ids.has(nd.id)) { ring = 'found'; strong = foundHL.target === nd.id; }
     out += renderItem(nd, p.x, p.y, p.op, ring, strong);
   }
+  if (pendingNode) {
+    out += `<circle cx="${PEND_X}" cy="${PEND_Y}" r="${NR + 4}" fill="none" stroke="#aaa" stroke-width="1.2" stroke-dasharray="4 3"/>` +
+      renderItem({ key: pendingNode.key, red: true }, PEND_X, PEND_Y, 1, null, false);
+  }
   svg.setAttribute('viewBox', `0 0 ${lay.W} ${lay.H}`);
   svg.style.minHeight = Math.min(lay.H, 540) + 'px';
   svg.innerHTML = out;
@@ -689,34 +702,40 @@ function updatePanels(root) {
 
 function setStatus(txt) { document.getElementById('status').textContent = txt; }
 function setBusy(b) {
-  ['btnIns', 'btnDel', 'btnFind', 'btnRand', 'btnClear', 'val', 'chkNil'].forEach(id =>
+  ['btnIns', 'btnDel', 'btnFind', 'btnRand', 'btnClear', 'val', 'chkNil', 'spd'].forEach(id =>
     document.getElementById(id).disabled = b);
   document.querySelectorAll('input[name=mode]').forEach(r => r.disabled = b);
   document.getElementById('btnSkip').style.display = b ? 'inline-block' : 'none';
 }
 
 async function playSteps(steps) {
-  const per = stepMs();
-  if (per === 0 || !steps.length) {
-    stepHL = new Set();
+  const sm = speedMode();
+  if (sm === '0' || !steps.length) {
+    stepHL = new Set(); stepTrail = new Set(); pendingNode = null;
     await animateTo(state.root, prefersReduced ? 0 : 350);
     updatePanels(state.root);
     return;
   }
+  const manual = sm === 'manual';
+  const per = manual ? 0 : Number(sm);
   playing = true; skipReq = false;
   setBusy(true);
+  document.getElementById('btnNext').style.display = manual ? 'inline-block' : 'none';
   for (let i = 0; i < steps.length && !skipReq; i++) {
     const s = steps[i];
     setStatus(`Passo ${i + 1} de ${steps.length} — ${s.msg}`);
     stepHL = new Set(s.hl);
     stepTrail = new Set(s.trail || []);
+    pendingNode = s.pending || null;
+    if (s.enterId && !positions.has(s.enterId)) positions.set(s.enterId, { x: PEND_X, y: PEND_Y });
     updatePanels(s.tree);
-    await animateTo(s.tree, Math.min(480, per * 0.55));
-    await sleep(Math.max(150, per * 0.45));
+    await animateTo(s.tree, manual ? 320 : Math.min(480, per * 0.55));
+    if (manual) await waitNext();
+    else await sleep(Math.max(150, per * 0.45));
   }
-  stepHL = new Set();
-  stepTrail = new Set();
+  stepHL = new Set(); stepTrail = new Set(); pendingNode = null;
   setStatus('');
+  document.getElementById('btnNext').style.display = 'none';
   await animateTo(state.root, 280);
   updatePanels(state.root);
   playing = false;
@@ -760,6 +779,13 @@ function doInsert(values) {
     const before = steps.length;
     if (mode === 'td') state.root = tdInsert(state.root, v, rec);
     else buInsert(state, v, rec);
+    const vp = findPath(state.root, v);
+    const vid = vp.path[vp.path.length - 1];
+    let entered = false;
+    for (let i = before; i < steps.length; i++) {
+      if (!contains(steps[i].tree, v)) steps[i].pending = { key: v };
+      else if (!entered) { steps[i].enterId = vid; entered = true; }
+    }
     log(`Inserir <span class="k">${v}</span> — ${steps.length - before} passo(s)`, mode);
   }
   document.getElementById('val').value = '';
@@ -790,7 +816,7 @@ function doFind() {
   clearFound();
   const r = findPath(state.root, v);
   if (!state.root) { log(`Árvore vazia — <span class="k">${v}</span> não está na árvore.`); return; }
-  if (stepMs() === 0) {                              // sem passos: destaque instantâneo do caminho
+  if (speedMode() === '0') {                         // sem passos: destaque instantâneo do caminho
     log(r.found
       ? `Encontrado <span class="k">${v}</span> — caminho com ${r.path.length} nó(s).`
       : `<span class="k">${v}</span> não encontrado (${r.path.length} comparações).`);
@@ -854,11 +880,17 @@ document.getElementById('btnClear').addEventListener('click', () => {
   state.root = null;
   positions = new Map(); lastItems = new Map();
   clearFound();
-  log('Árvore esvaziada.');
+  document.getElementById('log').innerHTML = '';
   animateTo(null, 0);
   updatePanels(null);
 });
-document.getElementById('btnSkip').addEventListener('click', () => { skipReq = true; });
+document.getElementById('btnSkip').addEventListener('click', () => {
+  skipReq = true;
+  if (nextResolve) { const r = nextResolve; nextResolve = null; r(); }
+});
+document.getElementById('btnNext').addEventListener('click', () => {
+  if (nextResolve) { const r = nextResolve; nextResolve = null; r(); }
+});
 document.getElementById('chkNil').addEventListener('change', (e) => {
   if (playing) { e.target.checked = showNil; return; }
   showNil = e.target.checked;
