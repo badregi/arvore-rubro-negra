@@ -25,10 +25,10 @@ button:focus-visible,#val:focus-visible{outline:2px solid #333;outline-offset:1p
 label.chk,label.spd{font-size:13px;color:#333;display:flex;align-items:center;gap:6px;cursor:pointer}
 select{border:1px solid #767676;background:#fff;font:13px Arial,sans-serif;padding:5px 4px}
 main{display:grid;grid-template-columns:minmax(0,1fr) 248px;gap:14px;padding:6px 24px 12px;align-items:start}
-.statusbar{min-height:26px;display:flex;align-items:center;gap:12px;padding:3px 2px 5px}
-#status{font-style:italic;color:#333;font-size:13px}
-#btnSkip,#btnNext{display:none;padding:3px 10px;font-size:12px}
-.hint{margin-left:auto;color:#999;font-size:11.5px}
+.statusbar{height:34px;display:flex;align-items:center;gap:12px;padding:0 2px}
+#status{font-style:italic;color:#333;font-size:13px;flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#btnSkip,#btnNext{visibility:hidden;padding:3px 10px;font-size:12px;flex:none}
+.hint{margin-left:auto;color:#999;font-size:11.5px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .canvas-wrap{border:1px solid #999;position:relative;min-height:374px;overflow:auto;background:#fff}
 .canvas-wrap svg{display:block;width:100%;height:auto;min-height:370px}
 .empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#888;font-size:14px;pointer-events:none}
@@ -700,12 +700,16 @@ function updatePanels(root) {
     `<li class="${ok ? 'ok' : 'bad'}"><span class="mark">${ok ? '✓' : '✗'}</span>${txt}</li>`).join('');
 }
 
-function setStatus(txt) { document.getElementById('status').textContent = txt; }
+function setStatus(txt) {
+  const el = document.getElementById('status');
+  el.textContent = txt;
+  el.title = txt;
+}
 function setBusy(b) {
   ['btnIns', 'btnDel', 'btnFind', 'btnRand', 'btnClear', 'val', 'chkNil', 'spd'].forEach(id =>
     document.getElementById(id).disabled = b);
   document.querySelectorAll('input[name=mode]').forEach(r => r.disabled = b);
-  document.getElementById('btnSkip').style.display = b ? 'inline-block' : 'none';
+  document.getElementById('btnSkip').style.visibility = b ? 'visible' : 'hidden';
 }
 
 async function playSteps(steps) {
@@ -720,7 +724,7 @@ async function playSteps(steps) {
   const per = manual ? 0 : Number(sm);
   playing = true; skipReq = false;
   setBusy(true);
-  document.getElementById('btnNext').style.display = manual ? 'inline-block' : 'none';
+  document.getElementById('btnNext').style.visibility = manual ? 'visible' : 'hidden';
   for (let i = 0; i < steps.length && !skipReq; i++) {
     const s = steps[i];
     setStatus(`Passo ${i + 1} de ${steps.length} — ${s.msg}`);
@@ -735,7 +739,7 @@ async function playSteps(steps) {
   }
   stepHL = new Set(); stepTrail = new Set(); pendingNode = null;
   setStatus('');
-  document.getElementById('btnNext').style.display = 'none';
+  document.getElementById('btnNext').style.visibility = 'hidden';
   await animateTo(state.root, 280);
   updatePanels(state.root);
   playing = false;
